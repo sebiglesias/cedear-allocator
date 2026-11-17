@@ -10,7 +10,6 @@ from typing import Dict, List
 from cedear_allocator import __version__
 from cedear_allocator.calendar import ART_TZ, get_first_business_day, is_first_business_day
 from cedear_allocator.market import DEFAULT_CEDEARS, fetch_dolar_rates, get_market_quotes
-from cedear_allocator.obsidian import create_obsidian_task
 from cedear_allocator.optimizer import optimize_allocation
 
 # ANSI Colors
@@ -163,7 +162,7 @@ def cmd_calc(args):
 
 
 def cmd_run(args):
-    """Rutina mensual de ejecución completa."""
+    """Rutina mensual de ejecución completa en terminal."""
     today = datetime.datetime.now(ART_TZ).date()
     is_first, first_bday = is_first_business_day(today)
 
@@ -180,34 +179,13 @@ def cmd_run(args):
     ccl_ref = rates.get("ccl", rates.get("mep", 0.0))
     quotes = get_market_quotes(tickers, ccl_ref=ccl_ref)
 
-    allocation = None
+    cmd_quotes(args)
     if args.budget and args.budget > 0:
         prices_ars = {t: q.price_ars for t, q in quotes.items()}
         allocation = optimize_allocation(args.budget, prices_ars, weights)
-
-    # Mostrar resumen
-    cmd_quotes(args)
-    if allocation:
         cmd_calc(args)
 
-    # Crear tarea de Obsidian si se solicitó o si el vault existe
-    if args.obsidian:
-        print(f"{BOLD}📝 Creando tarea en Obsidian Task Board...{RESET}")
-        task_path = create_obsidian_task(
-            today=today,
-            quotes=quotes,
-            rates=rates,
-            allocation=allocation,
-            start_session=args.start,
-        )
-        if task_path:
-            print(f"{GREEN}✓ Tarea creada:{RESET} {task_path.name}")
-            if args.start:
-                print(f"{GREEN}✓ Sesión con Antigravity (agy) lanzada.{RESET}")
-        else:
-            print(f"{YELLOW}No se pudo crear la tarea (directorio de vault no encontrado).{RESET}")
-
-    print(f"\n{GREEN}✓ Rutina mensual finalizada con éxito.{RESET}\n")
+    print(f"\n{GREEN}✓ Rutina mensual finalizada.{RESET}\n")
     return 0
 
 
@@ -241,8 +219,6 @@ def main():
     p_run.add_argument("--weights", default="70,20,10", help="Ponderaciones objetivo (default: 70,20,10).")
     p_run.add_argument("--tickers", default="SPY,VEA,IEMG", help="Tickers separados por coma (default: SPY,VEA,IEMG).")
     p_run.add_argument("--force", action="store_true", help="Fuerza ejecución aunque no sea el 1er día hábil.")
-    p_run.add_argument("--obsidian", action="store_true", help="Crea la tarea correspondiente en Obsidian.")
-    p_run.add_argument("--start", action="store_true", help="Inicia la sesión de agy con tk start.")
     p_run.add_argument("--json", action="store_true", help="Salida en formato JSON.")
 
     args = parser.parse_args()
